@@ -1,3 +1,4 @@
+// Display a rotated image the display
 package main
 
 import (
@@ -6,13 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/rubiojr/go-pirateaudio/st7789"
-	"periph.io/x/conn/v3/driver/driverreg"
-	"periph.io/x/conn/v3/gpio/gpioreg"
-	"periph.io/x/conn/v3/spi"
-	"periph.io/x/conn/v3/spi/spireg"
-	"periph.io/x/host/v3"
-	"periph.io/x/host/v3/bcm283x"
+	"github.com/rubiojr/go-pirateaudio/display"
 )
 
 func main() {
@@ -20,33 +15,15 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: %s <img-path>\n", os.Args[0])
 		os.Exit(1)
 	}
-	host.Init()
 
-	if _, err := driverreg.Init(); err != nil {
-		log.Fatal(err)
-	}
-
-	p, err := spireg.Open("SPI0.1")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer p.Close()
-
-	// Raspberry PI broadcom chipset
-	fmt.Println(bcm283x.Present())
-
-	// SPI port we're using
-	fmt.Println(p.(spi.Port))
-
-	// USE GPIO9 to send data/commands
-	// https://pinout.xyz/pinout/pirate_audio_line_out#
-	display, err := st7789.NewSPI(p.(spi.Port), gpioreg.ByName("GPIO9"), &st7789.DefaultOpts)
+	dsp, err := display.Init()
 	if err != nil {
 		panic(err)
 	}
+	defer dsp.Close()
 
 	// Set the screen color to white
-	display.FillScreen(color.RGBA{R: 0, G: 0, B: 0, A: 0})
+	dsp.FillScreen(color.RGBA{R: 0, G: 0, B: 0, A: 0})
 
 	img, err := os.Open(os.Args[1])
 	if err != nil {
@@ -55,6 +32,6 @@ func main() {
 	defer img.Close()
 
 	// Rotate before pushing pixels, so the image appears rotated
-	display.SetRotation(st7789.ROTATION_180)
-	display.DrawImage(img)
+	dsp.Rotate(display.ROTATION_180)
+	dsp.DrawImage(img)
 }
