@@ -82,11 +82,20 @@ func (d *Device) Bounds() image.Rectangle {
 	return d.rect
 }
 
-// Halt turns off the display.
-//
-// Sending any other command afterward reenables the display.
-func (d *Device) Halt() {
-	d.Command(0xAE)
+// PowerOff the display
+func (d *Device) PowerOff() error {
+	pin := gpioreg.ByName("GPIO13")
+	err := pin.Out(gpio.Low)
+
+	return err
+}
+
+// PowerOn the display
+func (d *Device) PowerOn() error {
+	pin := gpioreg.ByName("GPIO13")
+	err := pin.Out(gpio.Low)
+
+	return err
 }
 
 // Invert the display (black on white vs white on black).
