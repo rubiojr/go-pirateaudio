@@ -1,6 +1,6 @@
 module github.com/rubiojr/go-pirateaudio
 
-go 1.16
+go 1.15
 
 require (
 	github.com/warthog618/gpio v1.0.0
