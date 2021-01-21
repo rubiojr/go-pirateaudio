@@ -12,6 +12,7 @@ Heavily based on the [TinyGo](https://github.com/tinygo-org/drivers/tree/e376785
 
 Also used the [Python driver](https://github.com/pimoroni/st7789-python) by [Philip Howard](https://github.com/Gadgetoid) as a reference.
 
+### Drawing an Image on the display
 
 ```Go
 package main
@@ -73,5 +74,40 @@ func main() {
 	// Rotate before pushing pixels, so the image appears rotated
 	display.SetRotation(st7789.ROTATION_180)
 	display.DrawImage(img)
+}
+```
+
+### Controlling the hardware buttons (A,B,X,Y)
+
+```Go
+package main
+
+import (
+	"fmt"
+	"time"
+
+	"github.com/rubiojr/go-pirateaudio/buttons"
+)
+
+func main() {
+	buttons.OnButtonAPressed(func() {
+		fmt.Println("Yo Dawg, A pressed")
+	})
+
+	buttons.OnButtonXPressed(func() {
+		fmt.Println("Yo Dawg, X pressed")
+	})
+
+	buttons.OnButtonYPressed(func() {
+		fmt.Println("Yo Dawg, Y pressed")
+	})
+
+	buttons.OnButtonBPressed(func() {
+		fmt.Println("Yo Dawg, B pressed")
+	})
+
+	for {
+		time.Sleep(1)
+	}
 }
 ```
