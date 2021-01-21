@@ -119,51 +119,51 @@ func newDev(c conn.Conn, opts *Opts, dc gpio.PinOut) (*Device, error) {
 	}
 	d.batchLength = d.batchLength & 1
 
-	d.Command(ST7789_SWRESET)
+	d.Command(SWRESET)
 	time.Sleep(150 * time.Millisecond)
 
-	d.Command(ST7789_MADCTL)
+	d.Command(MADCTL)
 	d.Data(0x70)
 
-	d.Command(ST7789_FRMCTR2)
+	d.Command(FRMCTR2)
 	d.SendData([]byte{0x0C, 0x0C, 0x00, 0x33, 0x33})
 
-	d.Command(ST7789_COLMOD)
+	d.Command(COLMOD)
 	d.Data(0x05)
 
-	d.Command(ST7789_GCTRL)
+	d.Command(GCTRL)
 	d.Data(0x14)
 
-	d.Command(ST7789_VCOMS)
+	d.Command(VCOMS)
 	d.Data(0x37)
 
-	d.Command(ST7789_LCMCTRL)
+	d.Command(LCMCTRL)
 	d.Data(0x2C)
 
-	d.Command(ST7789_VDVVRHEN)
+	d.Command(VDVVRHEN)
 	d.Data(0x01)
 
-	d.Command(ST7789_VRHS)
+	d.Command(VRHS)
 	d.Data(0x12)
 
-	d.Command(ST7789_VDVS)
+	d.Command(VDVS)
 	d.Data(0x20)
 
 	d.Command(0xD0)
 	d.SendData([]byte{0xA4, 0xA1})
 
-	d.Command(ST7789_FRCTRL2)
+	d.Command(FRCTRL2)
 	d.Data(0x0F)
 
-	d.Command(ST7789_GMCTRP1)
+	d.Command(GMCTRP1)
 	d.SendData([]byte{0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B, 0x3F, 0x54, 0x4C, 0x18, 0x0D, 0x0B, 0x1F, 0x23})
 
-	d.Command(ST7789_GMCTRN1)
+	d.Command(GMCTRN1)
 	d.SendData([]byte{0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C, 0x3F, 0x44, 0x51, 0x2F, 0x1F, 0x1F, 0x20, 0x23})
 
-	d.Command(ST7789_INVON)
+	d.Command(INVON)
 
-	d.Command(ST7789_SLPOUT)
+	d.Command(SLPOUT)
 
 	d.Command(DISPON)
 
@@ -176,19 +176,19 @@ func (d *Device) SetWindow() {
 	y0 := 0
 	x0 := 0
 
-	d.Command(ST7789_CASET)
+	d.Command(CASET)
 	d.Data(byte(x0 >> 8))
 	d.Data(byte(x0 & 0xFF))
 	d.Data(byte(x1 >> 8))
 	d.Data(byte(x1 & 0xFF))
 
-	d.Command(ST7789_RASET)
+	d.Command(RASET)
 	d.Data(byte(y0 >> 8))
 	d.Data(byte(y0 & 0xFF))
 	d.Data(byte(y1 >> 8))
 	d.Data(byte(y1 & 0xFF))
 
-	d.Command(ST7789_RAMWR)
+	d.Command(RAMWR)
 	d.Data(0x89)
 }
 
