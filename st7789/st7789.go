@@ -211,8 +211,8 @@ func (d *Device) FillRectangle(x, y, width, height int16, c color.RGBA) error {
 	}
 	d.SetWindow()
 	c565 := RGBATo565(c)
-	c1 := uint8(c565 >> 8)
-	c2 := uint8(c565)
+	c1 := uint8(c565)
+	c2 := uint8(c565 >> 8)
 
 	data := make([]uint8, 240*2)
 	for i := int32(0); i < 240; i++ {
