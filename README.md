@@ -2,6 +2,8 @@
 
 Go module to control Pimoroni's Pirate Audio LCD and buttons.
 
+⚠️   Highly Experimental, API subject to change, may set your device on fire ⚠️ 
+
 ![gadget.jpg](gadget.jpg)
 
 Head over to [the official Pirate Audio GitHub repository](https://github.com/pimoroni/pirate-audio) to configure your Raspberry to be able to use this library. You'll need the `config.txt` changes mentioned in the README.
