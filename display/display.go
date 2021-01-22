@@ -77,3 +77,13 @@ func (d *Display) FillScreen(c color.RGBA) {
 func (d *Display) SetPixel(x int16, y int16, c color.RGBA) {
 	d.dev.SetPixel(x, y, c)
 }
+
+// PowerOff the display
+func (d *Display) PowerOff() {
+	d.dev.PowerOff()
+}
+
+// PowerOn the display
+func (d *Display) PowerOn() {
+	d.dev.PowerOn()
+}

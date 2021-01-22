@@ -71,6 +71,7 @@ type Device struct {
 	columnOffset, columnOffsetCfg int16
 	isBGR                         bool
 	batchLength                   int32
+	backlight                     gpio.PinIO
 }
 
 func (d *Device) String() string {
@@ -84,18 +85,12 @@ func (d *Device) Bounds() image.Rectangle {
 
 // PowerOff the display
 func (d *Device) PowerOff() error {
-	pin := gpioreg.ByName("GPIO13")
-	err := pin.Out(gpio.Low)
-
-	return err
+	return d.backlight.Out(gpio.Low)
 }
 
 // PowerOn the display
 func (d *Device) PowerOn() error {
-	pin := gpioreg.ByName("GPIO13")
-	err := pin.Out(gpio.Low)
-
-	return err
+	return d.backlight.Out(gpio.High)
 }
 
 // Invert the display (black on white vs white on black).
@@ -116,6 +111,7 @@ func newDev(c conn.Conn, opts *Opts, dc gpio.PinOut) (*Device, error) {
 		width:       opts.W,
 		height:      opts.H,
 		batchLength: int32(opts.W),
+		backlight:   gpioreg.ByName("GPIO13"),
 	}
 	d.batchLength = d.batchLength & 1
 
