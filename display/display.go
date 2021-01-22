@@ -1,6 +1,7 @@
 package display
 
 import (
+	"image"
 	"image/color"
 	"io"
 	"log"
@@ -64,6 +65,10 @@ func (d *Display) Close() {
 
 func (d *Display) DrawImage(reader io.Reader) {
 	d.dev.DrawImage(reader)
+}
+
+func (d *Display) DrawRAW(img image.Image) {
+	d.dev.DrawRAW(img)
 }
 
 func (d *Display) Rotate(rotation Rotation) {

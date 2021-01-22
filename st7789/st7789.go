@@ -344,6 +344,11 @@ func (d *Device) DrawImage(reader io.Reader) {
 		log.Fatal(err)
 	}
 
+	d.DrawRAW(img)
+}
+
+func (d *Device) DrawRAW(img image.Image) {
+	d.SetWindow()
 	rect := img.Bounds()
 	rgbaimg := image.NewRGBA(rect)
 	draw.Draw(rgbaimg, rect, img, rect.Min, draw.Src)
