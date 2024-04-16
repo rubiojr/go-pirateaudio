@@ -24,12 +24,14 @@ import (
 var DefaultOpts = Opts{
 	Width:    240,
 	Height:   240,
+	Rotation: ROTATION_NONE,
 }
 
 // Opts defines the options for the device.
 type Opts struct {
 	Width    int16
 	Height   int16
+	Rotation Rotation
 }
 
 func NewSPI(port spi.Port, dataComm gpio.PinOut, opts *Opts) (*Device, error) {
@@ -57,7 +59,6 @@ func NewSPI(port spi.Port, dataComm gpio.PinOut, opts *Opts) (*Device, error) {
 	return newST7789Device(conn, opts, dataComm)
 }
 
-// Device is an open handle to the display controller.
 type Device struct {
 	conn     conn.Conn
 	dataComm gpio.PinOut
@@ -106,7 +107,7 @@ func newST7789Device(conn conn.Conn, opts *Opts, dataComm gpio.PinOut) (*Device,
 		conn:        conn,
 		dataComm:    dataComm,
 		rect:        image.Rect(0, 0, int(opts.Width), int(opts.Height)),
-		rotation:    NO_ROTATION,
+		rotation:    opts.Rotation,
 		width:       opts.Width,
 		height:      opts.Height,
 		batchLength: int32(opts.Width),
@@ -118,43 +119,43 @@ func newST7789Device(conn conn.Conn, opts *Opts, dataComm gpio.PinOut) (*Device,
 	time.Sleep(150 * time.Millisecond)
 
 	d.Command(MADCTL)
-	d.Data(0x70)
+	d.Data(MADCTL_MX_RL | MADCTL_MV_REV | MADCTL_ML_BT)
 
-	d.Command(FRMCTR2)
-	d.SendData([]byte{0x0C, 0x0C, 0x00, 0x33, 0x33})
+	d.Command(PORCTRL)
+	d.SendData(defaultPorchControl())
 
 	d.Command(COLMOD)
-	d.Data(0x05)
+	d.Data(COLMOD_CTRL_65K)
 
 	d.Command(GCTRL)
-	d.Data(0x14)
+	d.Data(defaultGateControl())
 
 	d.Command(VCOMS)
-	d.Data(0x37)
+	d.Data(defaulVCOMSOffsetSet())
 
 	d.Command(LCMCTRL)
-	d.Data(0x2C)
+	d.Data(LCMCTRL_XBGR | LCMCTRL_XMH | LMCTRL_XMV)
 
 	d.Command(VDVVRHEN)
-	d.Data(0x01)
+	d.Data(VDVVRHEN_CMDEN_WRITE)
 
 	d.Command(VRHS)
-	d.Data(0x12)
+	d.Data(defaultVRHSet())
 
 	d.Command(VDVS)
-	d.Data(0x20)
+	d.Data(defaultVDVSet())
 
-	d.Command(0xD0)
-	d.SendData([]byte{0xA4, 0xA1})
+	d.Command(PWCTRL1)
+	d.SendData(defaultPowerCtrl())
 
 	d.Command(FRCTRL2)
-	d.Data(0x0F)
+	d.Data(FRAMERATE_60)
 
-	d.Command(GMCTRP1)
-	d.SendData([]byte{0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B, 0x3F, 0x54, 0x4C, 0x18, 0x0D, 0x0B, 0x1F, 0x23})
+	d.Command(PVGAMCTRL)
+	d.SendData(defaultPositiveGammaCtrl())
 
-	d.Command(GMCTRN1)
-	d.SendData([]byte{0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C, 0x3F, 0x44, 0x51, 0x2F, 0x1F, 0x1F, 0x20, 0x23})
+	d.Command(NVGAMCTRL)
+	d.SendData(defaultNegativeGammaCtrl())
 
 	d.Command(INVON)
 
@@ -232,7 +233,7 @@ func (d *Device) FillRectangle(x, y, width, height int16, c color.RGBA) error {
 
 // Size returns the current size of the display.
 func (d *Device) Size() (w, h int16) {
-	if d.rotation == NO_ROTATION || d.rotation == ROTATION_180 {
+	if d.rotation == ROTATION_NONE || d.rotation == ROTATION_180 {
 		return d.width, d.height
 	}
 	return 240, 240
@@ -249,7 +250,7 @@ func RGBATo565(c color.RGBA) uint16 {
 // SetPixel sets a pixel in the screen
 func (d *Device) SetPixel(x int16, y int16, c color.RGBA) {
 	if x < 0 || y < 0 ||
-		(((d.rotation == NO_ROTATION || d.rotation == ROTATION_180) && (x >= d.width || y >= d.height)) ||
+		(((d.rotation == ROTATION_NONE || d.rotation == ROTATION_180) && (x >= d.width || y >= d.height)) ||
 			((d.rotation == ROTATION_90 || d.rotation == ROTATION_270) && (x >= d.height || y >= d.width))) {
 		return
 	}
@@ -258,7 +259,7 @@ func (d *Device) SetPixel(x int16, y int16, c color.RGBA) {
 
 // FillScreen fills the screen with a given color
 func (d *Device) FillScreen(c color.RGBA) {
-	if d.rotation == NO_ROTATION || d.rotation == ROTATION_180 {
+	if d.rotation == ROTATION_NONE || d.rotation == ROTATION_180 {
 		d.FillRectangle(0, 0, d.width, d.height, c)
 	} else {
 		d.FillRectangle(0, 0, d.height, d.width, c)
@@ -269,29 +270,31 @@ func (d *Device) FillScreen(c color.RGBA) {
 func (d *Device) SetRotation(rotation Rotation) {
 	madctl := uint8(0)
 	switch rotation % 4 {
-	case 0:
-		madctl = MADCTL_MX | MADCTL_MY
+	case ROTATION_NONE:
+		madctl = MADCTL_MX_RL | MADCTL_MY_TB | MADCTL_MV_REV
 		d.rowOffset = d.rowOffsetCfg
 		d.columnOffset = d.columnOffsetCfg
-		break
-	case 1:
+	case ROTATION_90:
+		madctl = MADCTL_MX_RL | MADCTL_MY_BT | MADCTL_MV_NORM
 		madctl = MADCTL_MY | MADCTL_MV
 		d.rowOffset = d.columnOffsetCfg
 		d.columnOffset = d.rowOffsetCfg
+	case ROTATION_180:
+		madctl = MADCTL_MX_LR | MADCTL_MY_BT | MADCTL_MV_REV
 		break
 	case 2:
 		d.rowOffset = 0
 		d.columnOffset = 0
-		break
-	case 3:
-		madctl = MADCTL_MX | MADCTL_MV
+	case ROTATION_270:
+		madctl = MADCTL_MX_LR | MADCTL_MY_TB | MADCTL_MV_NORM
 		d.rowOffset = 0
 		d.columnOffset = 0
-		break
 	}
 	if d.isBGR {
 		madctl |= MADCTL_BGR
 	}
+
+	// Set the display orientation
 	d.Command(MADCTL)
 	d.Data(madctl)
 }
