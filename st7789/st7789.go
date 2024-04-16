@@ -214,32 +214,37 @@ func (d *Device) FillRectangle(x, y, width, height int16, c color.RGBA) error {
 	c1 := uint8(c565)
 	c2 := uint8(c565 >> 8)
 
-	data := make([]uint8, 240*2)
-	for i := int32(0); i < 240; i++ {
+	data := make([]uint8, d.PixelCount())
+	for i := int32(0); i < int32(d.width); i++ {
 		data[i*2] = c1
 		data[i*2+1] = c2
 	}
 	j := int32(width) * int32(height)
 	for j > 0 {
-		if j >= 240 {
+		if j >= int32(d.height) {
 			d.SendData(data)
 		} else {
 			d.SendData(data[:j*2])
 		}
-		j -= 240
+		j -= int32(d.height)
 	}
 	return nil
 }
 
 // Size returns the current size of the display.
-func (d *Device) Size() (w, h int16) {
+func (d *Device) Size() (int16, int16) {
 	if d.rotation == ROTATION_NONE || d.rotation == ROTATION_180 {
 		return d.width, d.height
 	}
-	return 240, 240
+	return d.height, d.width
 }
 
-// RGBATo565 converts a color.RGBA to uint16 used in the display
+// PixelCount returns the number of pixels in the display
+func (d *Device) PixelCount() uint32 {
+	return uint32(d.width) * uint32(d.height)
+}
+
+// RGBATo565 converts a color.RGBA to uint16 used in the display (bits r:5, g:6, b:5)
 func RGBATo565(c color.RGBA) uint16 {
 	r, g, b, _ := c.RGBA()
 	return uint16((r & 0xF800) +
@@ -360,8 +365,8 @@ func (d *Device) DrawRAW(img image.Image) {
 	draw.Draw(rgbaimg, rect, img, rect.Min, draw.Src)
 
 	np := []uint8{}
-	for i := 0; i < 240; i++ {
-		for j := 0; j < 240; j++ {
+	for i := 0; i < int(d.width); i++ {
+		for j := 0; j < int(d.height); j++ {
 			rgba := rgbaimg.At(int(d.width)-i, j).(color.RGBA)
 			c565 := RGBATo565(rgba)
 			c1 := uint8(c565)
