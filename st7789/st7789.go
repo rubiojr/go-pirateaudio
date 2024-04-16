@@ -22,25 +22,25 @@ import (
 
 // DefaultOpts is the recommended default options.
 var DefaultOpts = Opts{
-	W: 240,
-	H: 240,
+	Width:    240,
+	Height:   240,
 }
 
 // Opts defines the options for the device.
 type Opts struct {
-	W int16
-	H int16
+	Width    int16
+	Height   int16
 }
 
-func NewSPI(p spi.Port, dc gpio.PinOut, opts *Opts) (*Device, error) {
-	if dc == gpio.INVALID {
+func NewSPI(port spi.Port, dataComm gpio.PinOut, opts *Opts) (*Device, error) {
+	if dataComm == gpio.INVALID {
 		return nil, errors.New("ssd1306: use nil for dc to use 3-wire mode, do not use gpio.INVALID")
 	}
 	bits := 8
-	if err := dc.Out(gpio.Low); err != nil {
+	if err := dataComm.Out(gpio.Low); err != nil {
 		return nil, err
 	}
-	c, err := p.Connect(80*physic.MegaHertz, spi.Mode0, bits)
+	conn, err := port.Connect(80*physic.MegaHertz, spi.Mode0, bits)
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +54,14 @@ func NewSPI(p spi.Port, dc gpio.PinOut, opts *Opts) (*Device, error) {
 		panic(err)
 	}
 
-	return newDev(c, opts, dc)
+	return newST7789Device(conn, opts, dataComm)
 }
 
 // Device is an open handle to the display controller.
 type Device struct {
-	// Communication
-	c    conn.Conn
-	dc   gpio.PinOut
-	rect image.Rectangle
+	conn     conn.Conn
+	dataComm gpio.PinOut
+	rect     image.Rectangle
 
 	rotation                      Rotation
 	width                         int16
@@ -75,7 +74,7 @@ type Device struct {
 }
 
 func (d *Device) String() string {
-	return fmt.Sprintf("st7789.Device{%s, %s, %s}", d.c, d.dc, d.rect.Max)
+	return fmt.Sprintf("st7789.Device{%s, %s, %s}", d.conn, d.dataComm, d.rect.Max)
 }
 
 // Bounds implements display.Drawer. Min is guaranteed to be {0, 0}.
@@ -102,15 +101,15 @@ func (d *Device) Invert(blackOnWhite bool) {
 	d.Command(b)
 }
 
-func newDev(c conn.Conn, opts *Opts, dc gpio.PinOut) (*Device, error) {
+func newST7789Device(conn conn.Conn, opts *Opts, dataComm gpio.PinOut) (*Device, error) {
 	d := &Device{
-		c:           c,
-		dc:          dc,
-		rect:        image.Rect(0, 0, int(opts.W), int(opts.H)),
+		conn:        conn,
+		dataComm:    dataComm,
+		rect:        image.Rect(0, 0, int(opts.Width), int(opts.Height)),
 		rotation:    NO_ROTATION,
-		width:       opts.W,
-		height:      opts.H,
-		batchLength: int32(opts.W),
+		width:       opts.Width,
+		height:      opts.Height,
+		batchLength: int32(opts.Width),
 		backlight:   gpioreg.ByName("GPIO13"),
 	}
 	d.batchLength = d.batchLength & 1
@@ -189,17 +188,17 @@ func (d *Device) SetWindow() {
 }
 
 func (d *Device) SendData(c []byte) error {
-	if err := d.dc.Out(gpio.High); err != nil {
+	if err := d.dataComm.Out(gpio.High); err != nil {
 		return err
 	}
-	return d.c.Tx(c, nil)
+	return d.conn.Tx(c, nil)
 }
 
 func (d *Device) SendCommand(c []byte) error {
-	if err := d.dc.Out(gpio.Low); err != nil {
+	if err := d.dataComm.Out(gpio.Low); err != nil {
 		return err
 	}
-	return d.c.Tx(c, nil)
+	return d.conn.Tx(c, nil)
 }
 
 // FillRectangle fills a rectangle at a given coordinates with a color
