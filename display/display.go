@@ -7,7 +7,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/rubiojr/go-pirateaudio/st7789"
+	"github.com/vwhitteron/go-pirateaudio/st7789"
 	"periph.io/x/conn/v3/driver/driverreg"
 	"periph.io/x/conn/v3/gpio/gpioreg"
 	"periph.io/x/conn/v3/spi"

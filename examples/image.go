@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/rubiojr/go-pirateaudio/display"
+	"github.com/vwhitteron/go-pirateaudio/display"
 )
 
 func main() {

@@ -28,7 +28,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/rubiojr/go-pirateaudio/display"
+	"github.com/vwhitteron/go-pirateaudio/display"
 )
 
 func main() {
@@ -67,7 +67,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/rubiojr/go-pirateaudio/buttons"
+	"github.com/vwhitteron/go-pirateaudio/buttons"
 )
 
 func main() {
@@ -108,8 +108,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/rubiojr/go-pirateaudio/buttons"
-	"github.com/rubiojr/go-pirateaudio/display"
+	"github.com/vwhitteron/go-pirateaudio/buttons"
+	"github.com/vwhitteron/go-pirateaudio/display"
 )
 
 func main() {
@@ -160,7 +160,7 @@ package main
 import (
 	"time"
 
-	"github.com/rubiojr/go-pirateaudio/textview"
+	"github.com/vwhitteron/go-pirateaudio/textview"
 )
 
 func main() {
