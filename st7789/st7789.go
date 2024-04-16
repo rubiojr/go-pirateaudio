@@ -367,7 +367,7 @@ func (d *Device) DrawRAW(img image.Image) {
 	np := []uint8{}
 	for i := 0; i < int(d.width); i++ {
 		for j := 0; j < int(d.height); j++ {
-			rgba := rgbaimg.At(int(d.width)-i, j).(color.RGBA)
+			rgba := rgbaimg.At(rect.Min.X+int(d.width)-i, rect.Min.Y+j).(color.RGBA)
 			c565 := RGBATo565(rgba)
 			c1 := uint8(c565)
 			c2 := uint8(c565 >> 8)
