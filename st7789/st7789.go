@@ -269,6 +269,7 @@ func (d *Device) FillScreen(c color.RGBA) {
 // SetRotation changes the rotation of the device (clock-wise)
 func (d *Device) SetRotation(rotation Rotation) {
 	madctl := uint8(0)
+	vscsad := verticalScrollOffset(0)
 	switch rotation % 4 {
 	case ROTATION_NONE:
 		madctl = MADCTL_MX_RL | MADCTL_MY_TB | MADCTL_MV_REV
@@ -276,13 +277,12 @@ func (d *Device) SetRotation(rotation Rotation) {
 		d.columnOffset = d.columnOffsetCfg
 	case ROTATION_90:
 		madctl = MADCTL_MX_RL | MADCTL_MY_BT | MADCTL_MV_NORM
-		madctl = MADCTL_MY | MADCTL_MV
+		vscsad = verticalScrollOffset(320 - int(d.width))
 		d.rowOffset = d.columnOffsetCfg
 		d.columnOffset = d.rowOffsetCfg
 	case ROTATION_180:
 		madctl = MADCTL_MX_LR | MADCTL_MY_BT | MADCTL_MV_REV
-		break
-	case 2:
+		vscsad = verticalScrollOffset(320 - int(d.width))
 		d.rowOffset = 0
 		d.columnOffset = 0
 	case ROTATION_270:
@@ -297,6 +297,10 @@ func (d *Device) SetRotation(rotation Rotation) {
 	// Set the display orientation
 	d.Command(MADCTL)
 	d.Data(madctl)
+
+	// Set vertical scroll offset so that images are located correctly on 240x240 displays
+	d.Command(VSCSAD)
+	d.SendData(vscsad)
 }
 
 // IsBGR changes the color mode (RGB/BGR)
