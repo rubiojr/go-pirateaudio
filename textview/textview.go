@@ -7,7 +7,7 @@ import (
 
 	"github.com/fogleman/gg"
 	"github.com/muesli/reflow/wordwrap"
-	"github.com/vwhitteron/go-pirateaudio/display"
+	"github.com/rubiojr/go-pirateaudio/display"
 )
 
 type TextView struct {

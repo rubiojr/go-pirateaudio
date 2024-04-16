@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/vwhitteron/go-pirateaudio/buttons"
-	"github.com/vwhitteron/go-pirateaudio/display"
+	"github.com/rubiojr/go-pirateaudio/buttons"
+	"github.com/rubiojr/go-pirateaudio/display"
 )
 
 func main() {

@@ -1,4 +1,4 @@
-module github.com/vwhitteron/go-pirateaudio
+module github.com/rubiojr/go-pirateaudio
 
 go 1.22.0
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/vwhitteron/go-pirateaudio/buttons"
+	"github.com/rubiojr/go-pirateaudio/buttons"
 )
 
 func main() {
