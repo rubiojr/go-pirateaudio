@@ -28,8 +28,8 @@ var once sync.Once
 var display *Display
 
 type Display struct {
-	p   spi.PortCloser
-	dev *st7789.Device
+	port spi.PortCloser
+	dev  *st7789.Device
 }
 
 func init() {
@@ -47,20 +47,20 @@ func Init() (*Display, error) {
 	var err error
 	once.Do(func() {
 		display = &Display{}
-		display.p, err = spireg.Open("SPI0.1")
+		display.port, err = spireg.Open("SPI0.1")
 		if err != nil {
 			return
 		}
 		// USE GPIO9 to send data/commands
 		// https://pinout.xyz/pinout/pirate_audio_line_out#
-		display.dev, err = st7789.NewSPI(display.p.(spi.Port), gpioreg.ByName("GPIO9"), &st7789.DefaultOpts)
+		display.dev, err = st7789.NewSPI(display.port.(spi.Port), gpioreg.ByName("GPIO9"), &st7789.DefaultOpts)
 	})
 
 	return display, err
 }
 
 func (d *Display) Close() {
-	d.p.Close()
+	d.port.Close()
 }
 
 func (d *Display) DrawImage(reader io.Reader) {

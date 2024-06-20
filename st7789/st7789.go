@@ -22,25 +22,27 @@ import (
 
 // DefaultOpts is the recommended default options.
 var DefaultOpts = Opts{
-	W: 240,
-	H: 240,
+	Width:    240,
+	Height:   240,
+	Rotation: ROTATION_NONE,
 }
 
 // Opts defines the options for the device.
 type Opts struct {
-	W int16
-	H int16
+	Width    int16
+	Height   int16
+	Rotation Rotation
 }
 
-func NewSPI(p spi.Port, dc gpio.PinOut, opts *Opts) (*Device, error) {
-	if dc == gpio.INVALID {
+func NewSPI(port spi.Port, dataComm gpio.PinOut, opts *Opts) (*Device, error) {
+	if dataComm == gpio.INVALID {
 		return nil, errors.New("ssd1306: use nil for dc to use 3-wire mode, do not use gpio.INVALID")
 	}
 	bits := 8
-	if err := dc.Out(gpio.Low); err != nil {
+	if err := dataComm.Out(gpio.Low); err != nil {
 		return nil, err
 	}
-	c, err := p.Connect(80*physic.MegaHertz, spi.Mode0, bits)
+	conn, err := port.Connect(80*physic.MegaHertz, spi.Mode0, bits)
 	if err != nil {
 		return nil, err
 	}
@@ -54,15 +56,13 @@ func NewSPI(p spi.Port, dc gpio.PinOut, opts *Opts) (*Device, error) {
 		panic(err)
 	}
 
-	return newDev(c, opts, dc)
+	return newST7789Device(conn, opts, dataComm)
 }
 
-// Device is an open handle to the display controller.
 type Device struct {
-	// Communication
-	c    conn.Conn
-	dc   gpio.PinOut
-	rect image.Rectangle
+	conn     conn.Conn
+	dataComm gpio.PinOut
+	rect     image.Rectangle
 
 	rotation                      Rotation
 	width                         int16
@@ -75,7 +75,7 @@ type Device struct {
 }
 
 func (d *Device) String() string {
-	return fmt.Sprintf("st7789.Device{%s, %s, %s}", d.c, d.dc, d.rect.Max)
+	return fmt.Sprintf("st7789.Device{%s, %s, %s}", d.conn, d.dataComm, d.rect.Max)
 }
 
 // Bounds implements display.Drawer. Min is guaranteed to be {0, 0}.
@@ -102,15 +102,15 @@ func (d *Device) Invert(blackOnWhite bool) {
 	d.Command(b)
 }
 
-func newDev(c conn.Conn, opts *Opts, dc gpio.PinOut) (*Device, error) {
+func newST7789Device(conn conn.Conn, opts *Opts, dataComm gpio.PinOut) (*Device, error) {
 	d := &Device{
-		c:           c,
-		dc:          dc,
-		rect:        image.Rect(0, 0, int(opts.W), int(opts.H)),
-		rotation:    NO_ROTATION,
-		width:       opts.W,
-		height:      opts.H,
-		batchLength: int32(opts.W),
+		conn:        conn,
+		dataComm:    dataComm,
+		rect:        image.Rect(0, 0, int(opts.Width), int(opts.Height)),
+		rotation:    opts.Rotation,
+		width:       opts.Width,
+		height:      opts.Height,
+		batchLength: int32(opts.Width),
 		backlight:   gpioreg.ByName("GPIO13"),
 	}
 	d.batchLength = d.batchLength & 1
@@ -119,43 +119,43 @@ func newDev(c conn.Conn, opts *Opts, dc gpio.PinOut) (*Device, error) {
 	time.Sleep(150 * time.Millisecond)
 
 	d.Command(MADCTL)
-	d.Data(0x70)
+	d.Data(MADCTL_MX_RL | MADCTL_MV_REV | MADCTL_ML_BT)
 
-	d.Command(FRMCTR2)
-	d.SendData([]byte{0x0C, 0x0C, 0x00, 0x33, 0x33})
+	d.Command(PORCTRL)
+	d.SendData(defaultPorchControl())
 
 	d.Command(COLMOD)
-	d.Data(0x05)
+	d.Data(COLMOD_CTRL_65K)
 
 	d.Command(GCTRL)
-	d.Data(0x14)
+	d.Data(defaultGateControl())
 
 	d.Command(VCOMS)
-	d.Data(0x37)
+	d.Data(defaulVCOMSOffsetSet())
 
 	d.Command(LCMCTRL)
-	d.Data(0x2C)
+	d.Data(LCMCTRL_XBGR | LCMCTRL_XMH | LMCTRL_XMV)
 
 	d.Command(VDVVRHEN)
-	d.Data(0x01)
+	d.Data(VDVVRHEN_CMDEN_WRITE)
 
 	d.Command(VRHS)
-	d.Data(0x12)
+	d.Data(defaultVRHSet())
 
 	d.Command(VDVS)
-	d.Data(0x20)
+	d.Data(defaultVDVSet())
 
-	d.Command(0xD0)
-	d.SendData([]byte{0xA4, 0xA1})
+	d.Command(PWCTRL1)
+	d.SendData(defaultPowerCtrl())
 
 	d.Command(FRCTRL2)
-	d.Data(0x0F)
+	d.Data(FRAMERATE_60)
 
-	d.Command(GMCTRP1)
-	d.SendData([]byte{0xD0, 0x04, 0x0D, 0x11, 0x13, 0x2B, 0x3F, 0x54, 0x4C, 0x18, 0x0D, 0x0B, 0x1F, 0x23})
+	d.Command(PVGAMCTRL)
+	d.SendData(defaultPositiveGammaCtrl())
 
-	d.Command(GMCTRN1)
-	d.SendData([]byte{0xD0, 0x04, 0x0C, 0x11, 0x13, 0x2C, 0x3F, 0x44, 0x51, 0x2F, 0x1F, 0x1F, 0x20, 0x23})
+	d.Command(NVGAMCTRL)
+	d.SendData(defaultNegativeGammaCtrl())
 
 	d.Command(INVON)
 
@@ -189,17 +189,17 @@ func (d *Device) SetWindow() {
 }
 
 func (d *Device) SendData(c []byte) error {
-	if err := d.dc.Out(gpio.High); err != nil {
+	if err := d.dataComm.Out(gpio.High); err != nil {
 		return err
 	}
-	return d.c.Tx(c, nil)
+	return d.conn.Tx(c, nil)
 }
 
 func (d *Device) SendCommand(c []byte) error {
-	if err := d.dc.Out(gpio.Low); err != nil {
+	if err := d.dataComm.Out(gpio.Low); err != nil {
 		return err
 	}
-	return d.c.Tx(c, nil)
+	return d.conn.Tx(c, nil)
 }
 
 // FillRectangle fills a rectangle at a given coordinates with a color
@@ -214,32 +214,37 @@ func (d *Device) FillRectangle(x, y, width, height int16, c color.RGBA) error {
 	c1 := uint8(c565)
 	c2 := uint8(c565 >> 8)
 
-	data := make([]uint8, 240*2)
-	for i := int32(0); i < 240; i++ {
+	data := make([]uint8, d.PixelCount())
+	for i := int32(0); i < int32(d.width); i++ {
 		data[i*2] = c1
 		data[i*2+1] = c2
 	}
 	j := int32(width) * int32(height)
 	for j > 0 {
-		if j >= 240 {
+		if j >= int32(d.height) {
 			d.SendData(data)
 		} else {
 			d.SendData(data[:j*2])
 		}
-		j -= 240
+		j -= int32(d.height)
 	}
 	return nil
 }
 
 // Size returns the current size of the display.
-func (d *Device) Size() (w, h int16) {
-	if d.rotation == NO_ROTATION || d.rotation == ROTATION_180 {
+func (d *Device) Size() (int16, int16) {
+	if d.rotation == ROTATION_NONE || d.rotation == ROTATION_180 {
 		return d.width, d.height
 	}
-	return 240, 240
+	return d.height, d.width
 }
 
-// RGBATo565 converts a color.RGBA to uint16 used in the display
+// PixelCount returns the number of pixels in the display
+func (d *Device) PixelCount() uint32 {
+	return uint32(d.width) * uint32(d.height)
+}
+
+// RGBATo565 converts a color.RGBA to uint16 used in the display (bits r:5, g:6, b:5)
 func RGBATo565(c color.RGBA) uint16 {
 	r, g, b, _ := c.RGBA()
 	return uint16((r & 0xF800) +
@@ -250,7 +255,7 @@ func RGBATo565(c color.RGBA) uint16 {
 // SetPixel sets a pixel in the screen
 func (d *Device) SetPixel(x int16, y int16, c color.RGBA) {
 	if x < 0 || y < 0 ||
-		(((d.rotation == NO_ROTATION || d.rotation == ROTATION_180) && (x >= d.width || y >= d.height)) ||
+		(((d.rotation == ROTATION_NONE || d.rotation == ROTATION_180) && (x >= d.width || y >= d.height)) ||
 			((d.rotation == ROTATION_90 || d.rotation == ROTATION_270) && (x >= d.height || y >= d.width))) {
 		return
 	}
@@ -259,7 +264,7 @@ func (d *Device) SetPixel(x int16, y int16, c color.RGBA) {
 
 // FillScreen fills the screen with a given color
 func (d *Device) FillScreen(c color.RGBA) {
-	if d.rotation == NO_ROTATION || d.rotation == ROTATION_180 {
+	if d.rotation == ROTATION_NONE || d.rotation == ROTATION_180 {
 		d.FillRectangle(0, 0, d.width, d.height, c)
 	} else {
 		d.FillRectangle(0, 0, d.height, d.width, c)
@@ -269,32 +274,38 @@ func (d *Device) FillScreen(c color.RGBA) {
 // SetRotation changes the rotation of the device (clock-wise)
 func (d *Device) SetRotation(rotation Rotation) {
 	madctl := uint8(0)
+	vscsad := verticalScrollOffset(0)
 	switch rotation % 4 {
-	case 0:
-		madctl = MADCTL_MX | MADCTL_MY
+	case ROTATION_NONE:
+		madctl = MADCTL_MX_RL | MADCTL_MY_TB | MADCTL_MV_REV
 		d.rowOffset = d.rowOffsetCfg
 		d.columnOffset = d.columnOffsetCfg
-		break
-	case 1:
-		madctl = MADCTL_MY | MADCTL_MV
+	case ROTATION_90:
+		madctl = MADCTL_MX_RL | MADCTL_MY_BT | MADCTL_MV_NORM
+		vscsad = verticalScrollOffset(320 - int(d.width))
 		d.rowOffset = d.columnOffsetCfg
 		d.columnOffset = d.rowOffsetCfg
-		break
-	case 2:
+	case ROTATION_180:
+		madctl = MADCTL_MX_LR | MADCTL_MY_BT | MADCTL_MV_REV
+		vscsad = verticalScrollOffset(320 - int(d.width))
 		d.rowOffset = 0
 		d.columnOffset = 0
-		break
-	case 3:
-		madctl = MADCTL_MX | MADCTL_MV
+	case ROTATION_270:
+		madctl = MADCTL_MX_LR | MADCTL_MY_TB | MADCTL_MV_NORM
 		d.rowOffset = 0
 		d.columnOffset = 0
-		break
 	}
 	if d.isBGR {
 		madctl |= MADCTL_BGR
 	}
+
+	// Set the display orientation
 	d.Command(MADCTL)
 	d.Data(madctl)
+
+	// Set vertical scroll offset so that images are located correctly on 240x240 displays
+	d.Command(VSCSAD)
+	d.SendData(vscsad)
 }
 
 // IsBGR changes the color mode (RGB/BGR)
@@ -354,9 +365,9 @@ func (d *Device) DrawRAW(img image.Image) {
 	draw.Draw(rgbaimg, rect, img, rect.Min, draw.Src)
 
 	np := []uint8{}
-	for i := 0; i < 240; i++ {
-		for j := 0; j < 240; j++ {
-			rgba := rgbaimg.At(int(d.width)-i, j).(color.RGBA)
+	for i := 0; i < int(d.width); i++ {
+		for j := 0; j < int(d.height); j++ {
+			rgba := rgbaimg.At(rect.Min.X+int(d.width)-i, rect.Min.Y+j).(color.RGBA)
 			c565 := RGBATo565(rgba)
 			c1 := uint8(c565)
 			c2 := uint8(c565 >> 8)
